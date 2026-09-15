@@ -159,9 +159,10 @@ input {
 }
 
 textarea {
-  min-height: 120px;
+  min-height: 56px;
+  height: 56px;
   padding: 15px;
-  resize: vertical;
+  resize: none;
 }
 
 input:focus,
